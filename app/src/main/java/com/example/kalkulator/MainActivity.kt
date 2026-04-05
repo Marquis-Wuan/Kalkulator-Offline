@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable // INI YANG TADI KURANG
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -14,15 +15,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.objecthunter.exp4j.ExpressionBuilder // Tambahkan library ini di build.gradle jika ingin kalkulasi canggih
+import net.objecthunter.exp4j.ExpressionBuilder // INI BUTUH LIBRARY DI GRADLE
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            KalkulatorTheme {
+            // Pakai MaterialTheme bawaan saja supaya tidak error "Unresolved KalkulatorTheme"
+            MaterialTheme {
                 KalkulatorScreen()
             }
         }
@@ -40,7 +43,6 @@ fun KalkulatorScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.Bottom
     ) {
-        // DISPLAY (Area Hasil)
         Text(
             text = display,
             modifier = Modifier
@@ -48,15 +50,15 @@ fun KalkulatorScreen() {
                 .padding(vertical = 32.dp),
             textAlign = TextAlign.End,
             color = Color.White,
-            fontSize = if (display.length > 8) 40.sp else 70.sp, // Otomatis mengecil jika angka panjang
+            fontSize = if (display.length > 8) 40.sp else 70.sp,
             lineHeight = 70.sp,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Light
         )
 
-        // TOMBOL-TOMBOL (Dibuat Grid agar rapi)
         val buttons = listOf(
-            listOf("AC", "( )", "%", "÷"),
+            listOf("AC", "(", ")", "÷"),
             listOf("7", "8", "9", "×"),
             listOf("4", "5", "6", "-"),
             listOf("1", "2", "3", "+"),
@@ -88,17 +90,17 @@ fun KalkulatorScreen() {
 @Composable
 fun CalcButton(label: String, modifier: Modifier, onClick: () -> Unit) {
     val containerColor = when {
-        label == "=" -> Color(0xFF4CAF50) // Hijau
-        label in listOf("÷", "×", "-", "+") -> Color(0xFFFF9800) // Oranye
-        label == "AC" -> Color(0xFFF44336) // Merah
-        else -> Color(0xFF333333) // Abu gelap
+        label == "=" -> Color(0xFF4CAF50)
+        label in listOf("÷", "×", "-", "+") -> Color(0xFFFF9800)
+        label == "AC" -> Color(0xFFF44336)
+        else -> Color(0xFF333333)
     }
 
     Box(
         modifier = modifier
             .clip(CircleShape)
             .background(containerColor)
-            .clickable { onClick() },
+            .clickable { onClick() }, // Sekarang sudah di-import
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -110,14 +112,12 @@ fun CalcButton(label: String, modifier: Modifier, onClick: () -> Unit) {
     }
 }
 
-// LOGIC KALKULATOR (Agar tidak ngaco)
 fun handleInput(current: String, input: String): String {
     return when (input) {
         "AC" -> "0"
         "⌫" -> if (current.length <= 1) "0" else current.dropLast(1)
         "=" -> {
             try {
-                // Sederhanakan: Ganti simbol visual ke simbol matematika
                 val expression = current.replace("×", "*").replace("÷", "/")
                 val result = ExpressionBuilder(expression).build().evaluate()
                 if (result % 1 == 0.0) result.toInt().toString() else result.toString()
@@ -125,8 +125,6 @@ fun handleInput(current: String, input: String): String {
                 "Error"
             }
         }
-        else -> {
-            if (current == "0") input else current + input
-        }
+        else -> if (current == "0") input else current + input
     }
 }
