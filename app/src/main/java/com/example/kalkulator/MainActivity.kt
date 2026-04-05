@@ -10,49 +10,51 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.objecthunter.exp4j.ExpressionBuilder // Tambahkan library ini di build.gradle jika ingin kalkulasi canggih
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            KalkulatorScreen()
+            KalkulatorTheme {
+                KalkulatorScreen()
+            }
         }
     }
 }
 
 @Composable
 fun KalkulatorScreen() {
-    var expression by remember { mutableStateOf("") }
-    val bgColor = Color(0xFF000000)
-
+    var display by remember { mutableStateOf("0") }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
-            .padding(20.dp)
+            .background(Color.Black)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Bottom
     ) {
-        Spacer(modifier = Modifier.weight(1f))
-        
-        // Display Angka
+        // DISPLAY (Area Hasil)
         Text(
-            text = expression,
-            fontSize = 70.sp,
-            color = Color.White,
-            modifier = Modifier.fillMaxWidth(),
+            text = display,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp),
             textAlign = TextAlign.End,
-            maxLines = 2
+            color = Color.White,
+            fontSize = if (display.length > 8) 40.sp else 70.sp, // Otomatis mengecil jika angka panjang
+            lineHeight = 70.sp,
+            maxLines = 2,
+            fontWeight = FontWeight.Light
         )
-        
-        // Kursor Putih
-        Box(modifier = Modifier.align(Alignment.End).width(3.dp).height(50.dp).background(Color.White))
-        
-        Spacer(modifier = Modifier.height(30.dp))
 
+        // TOMBOL-TOMBOL (Dibuat Grid agar rapi)
         val buttons = listOf(
             listOf("AC", "( )", "%", "÷"),
             listOf("7", "8", "9", "×"),
@@ -63,20 +65,20 @@ fun KalkulatorScreen() {
 
         buttons.forEach { row ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 row.forEach { label ->
-                    CalcButton(label, modifier = Modifier.weight(1f)) {
-                        expression = when(label) {
-                            "AC" -> ""
-                            "⌫" -> if(expression.isNotEmpty()) expression.dropLast(1) else ""
-                            "÷" -> expression + "/"
-                            "×" -> expression + "*"
-                            "=" -> try { "10" } catch(e: Exception) { "Error" } // Contoh simpel
-                            else -> expression + label
+                    CalcButton(
+                        label = label,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .padding(vertical = 5.dp),
+                        onClick = {
+                            display = handleInput(display, label)
                         }
-                    }
+                    )
                 }
             }
         }
@@ -86,20 +88,45 @@ fun KalkulatorScreen() {
 @Composable
 fun CalcButton(label: String, modifier: Modifier, onClick: () -> Unit) {
     val containerColor = when {
-        label == "=" -> Color(0xFFE0E0E0)
-        label in listOf("AC", "( )", "%") -> Color(0xFFA5A5A5)
-        label in listOf("÷", "×", "-", "+") -> Color(0xFF444444)
-        else -> Color(0xFF333333)
+        label == "=" -> Color(0xFF4CAF50) // Hijau
+        label in listOf("÷", "×", "-", "+") -> Color(0xFFFF9800) // Oranye
+        label == "AC" -> Color(0xFFF44336) // Merah
+        else -> Color(0xFF333333) // Abu gelap
     }
-    val contentColor = if (label == "=" || label in listOf("AC", "( )", "%")) Color.Black else Color.White
 
-    Button(
-        onClick = onClick,
-        modifier = modifier.aspectRatio(1f),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor, contentColor = contentColor),
-        contentPadding = PaddingValues(0.dp)
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(containerColor)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
     ) {
-        Text(text = label, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+// LOGIC KALKULATOR (Agar tidak ngaco)
+fun handleInput(current: String, input: String): String {
+    return when (input) {
+        "AC" -> "0"
+        "⌫" -> if (current.length <= 1) "0" else current.dropLast(1)
+        "=" -> {
+            try {
+                // Sederhanakan: Ganti simbol visual ke simbol matematika
+                val expression = current.replace("×", "*").replace("÷", "/")
+                val result = ExpressionBuilder(expression).build().evaluate()
+                if (result % 1 == 0.0) result.toInt().toString() else result.toString()
+            } catch (e: Exception) {
+                "Error"
+            }
+        }
+        else -> {
+            if (current == "0") input else current + input
+        }
     }
 }
